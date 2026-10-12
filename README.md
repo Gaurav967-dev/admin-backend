@@ -35,19 +35,19 @@ http://localhost:8000/docs
 
 # API Endpoints
 
-POST /sign
-POST /signup
-GET /verify-token
-POST /refresh-token
-POST /logout
+POST /sign,
+POST /signup,
+GET /verify-token,
+POST /refresh-token,
+POST /logout,
 
-GET /dashboard
+GET /dashboard,
 
-GET /user
-POST /user
-PUT /user
-DELETE /user
+GET /user,
+POST /user,
+PUT /user,
+DELETE /user,
 
-GET /profile
-PUT /profile
-PATCH /profile
+GET /profile,
+PUT /profile,
+PATCH /profile,
