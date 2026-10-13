@@ -9,7 +9,7 @@ from fastapi import ( FastAPI, Depends, HTTPException, Cookie, Response, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field, field_validator, ValidationError
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, func, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -394,6 +394,13 @@ async def check_write_origin(request: Request, call_next):
 
     return await call_next(request)
 
+@app.get("/public-stats")
+def get_public_stats(db: Session = Depends(get_db)):
+    return {
+        "total_users": db.scalar(select(func.count()).select_from(User)) or 0,
+        "active_users": db.scalar(select(func.count()).select_from(User).where(User.is_active.is_(True))) or 0,
+        "admins": db.scalar(select(func.count()).select_from(User).where(User.role == "admin")) or 0,
+    }
 
 @app.post("/signup", status_code=201)
 def signup(
@@ -461,11 +468,28 @@ def signin(
         "user": public_user(user)
     }
 
-
 @app.get("/verify-token")
 def verify_token(
-    user: User = Depends(current_user)
+    user: User = Depends(current_user),
+    id_token: str | None = Cookie(default=None),
 ):
+    if not id_token:
+        raise HTTPException(
+            status_code=401,
+            detail="ID token missing"
+        )
+
+    identity = decode_token(
+        id_token,
+        "id"
+    )
+
+    if identity.get("sub") != str(user.id):
+        raise HTTPException(
+            status_code=401,
+            detail="Token identity mismatch"
+        )
+
     return {
         "valid": True,
         "user": public_user(user)
@@ -565,10 +589,47 @@ def get_dashboard(
 
 @app.get("/user")
 def get_users(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=5, ge=1, le=50),
+    search: str = Query(default="", max_length=100),
+    status_filter: Literal[ "all", "active", "inactive" ] = "all",
+    role_filter: Literal[ "all", "admin", "user" ] = "all",
     admin: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    return get_user_summary(db)
+    conditions = []
+
+    if search.strip():
+        term = f"%{search.strip()}%"
+
+        conditions.append(
+            or_(
+                User.name.ilike(term),
+                User.email.ilike(term),
+            )
+        )
+
+    if status_filter == "active":
+        conditions.append(User.is_active.is_(True))
+    elif status_filter == "inactive":
+        conditions.append(User.is_active.is_(False))
+
+    if role_filter != "all":
+        conditions.append(User.role == role_filter)
+
+    filtered_total = db.scalar(select(func.count()).select_from(User).where(*conditions)) or 0
+    users = db.scalars(select(User).where(*conditions).order_by(User.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()
+
+    return {
+        "users": [
+            serialize_admin_user(user)
+            for user in users
+        ],
+        "page": page,
+        "page_size": page_size,
+        "filtered_total": filtered_total,
+        "total_pages": max(1, (filtered_total + page_size - 1) // page_size),
+    }
 
 
 @app.post("/user", status_code=201)
