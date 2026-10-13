@@ -18,7 +18,7 @@ REST API developed with Python, FastAPI, SQLAlchemy, and PostgreSQL.
 
 1. Clone the backend repository.
 2. Open the folder in VS Code.
-3. Create a virtual environment: py -m venv venv
+3. Create a virtual environment: python -m venv venv
 4. Activate it: .\venv\Scripts\Activate.ps1
 5. Install dependencies: pip install -r requirements.txt
 6. Create PostgreSQL database: CREATE DATABASE admin_management;
