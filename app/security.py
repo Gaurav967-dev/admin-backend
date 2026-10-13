@@ -17,7 +17,7 @@ if len(SECRET_KEY) < 32:
 
 password_hasher = PasswordHash.recommended()
 
-ACCESS_MINUTES = 15
+ACCESS_MINUTES = 5
 REFRESH_DAYS = 7
 
 
@@ -42,10 +42,7 @@ def hash_jti(jti: str) -> str:
 
 def create_token(user_id: int, token_type: str, identity: dict | None = None, session_id: str | None = None):
     if token_type not in {"id", "access", "refresh"}:
-        raise ValueError("Unsupported token type")
-
-    if token_type == "access" and not session_id:
-        raise ValueError("Access token requires session ID")
+        raise ValueError("Invalid token type")
     
     now = datetime.now(timezone.utc)
 
@@ -67,6 +64,9 @@ def create_token(user_id: int, token_type: str, identity: dict | None = None, se
     }
 
     if token_type == "access":
+        if not session_id:
+            raise ValueError("Session ID is required")
+
         payload["sid"] = session_id
 
     if token_type == "id":

@@ -127,12 +127,12 @@ def set_auth_cookies(
     )
 
     cookies = [
-        ("id_token", id_token, 15 * 60),
-        ("access_token", access_token, 15 * 60),
-        ("refresh_token", refresh_token, 7 * 24 * 60 * 60)
+        ("id_token", id_token, 5 * 60, "/verify-token"),
+        ("access_token", access_token, 5 * 60, "/"),
+        ("refresh_token", refresh_token, 7 * 24 * 60 * 60, "/refresh-token")
     ]
 
-    for name, value, max_age in cookies:
+    for name, value, max_age, cookie_path in cookies:
         response.set_cookie(
             key=name,
             value=value,
@@ -140,7 +140,7 @@ def set_auth_cookies(
             secure=COOKIE_SECURE,
             samesite="lax",
             max_age=max_age,
-            path="/"
+            path=cookie_path
         )
 
 
@@ -169,7 +169,7 @@ def current_user(
     except (TypeError, ValueError):
         raise HTTPException(
             status_code=401,
-            detail="Invalid token subject"
+            detail="Invalid access token subject"
         )
 
     session = db.scalar(
@@ -179,13 +179,11 @@ def current_user(
         )
     )
 
-    now = datetime.now(timezone.utc)
-
     if (
         session is None
         or session.revoked
         or session.user_id != user_id
-        or session.expires_at <= now
+        or session.expires_at <= datetime.now(timezone.utc)
     ):
         raise HTTPException(
             status_code=401,
@@ -378,8 +376,8 @@ def set_identity_cookie(
         httponly=True,
         secure=COOKIE_SECURE,
         samesite="lax",
-        max_age=15 * 60,
-        path="/"
+        max_age=5 * 60,
+        path="/verify-token"
     )
 
 
@@ -531,29 +529,28 @@ def refresh_token(
 @app.post("/logout")
 def logout(
     response: Response,
-    refresh_token: str | None = Cookie(default=None),
+    user: User = Depends(current_user),
+    access_token: str | None = Cookie(default=None),
     db: Session = Depends(get_db)
 ):
-    if refresh_token:
-        try:
-            payload = decode_token(
-                refresh_token, "refresh"
-            )
-            session = db.scalar(
-                select(RefreshSession).where(
-                    RefreshSession.jti_hash ==
-                    hash_jti(payload["jti"])
-                )
-            )
-            if session:
-                session.revoked = True
-                db.commit()
-        except HTTPException:
-            pass
+    payload = decode_token(access_token, "access")
 
-    response.delete_cookie("id_token", path="/")
+    session_id = payload["sid"]
+
+    # Revoke current login session.
+    db.execute(
+        update(RefreshSession)
+        .where(
+            RefreshSession.user_id == user.id, RefreshSession.jti_hash == hash_jti(session_id)
+        )
+        .values(revoked=True)
+    )
+
+    db.commit()
+
+    response.delete_cookie("id_token", path="/verify-token")
     response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    response.delete_cookie("refresh_token", path="/refresh-token")
 
     return {"message": "Logged out successfully"}
 
