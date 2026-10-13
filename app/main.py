@@ -619,12 +619,18 @@ def get_users(
 
     filtered_total = db.scalar(select(func.count()).select_from(User).where(*conditions)) or 0
     users = db.scalars(select(User).where(*conditions).order_by(User.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()
+    total_users = db.scalar(select(func.count()).select_from(User)) or 0
+    active_users = db.scalar(select(func.count()).select_fron(User).where(User.is_active.is_(True))) or 0
+    admins = db.scalar(select(func.count()).select_from(User).where(User.role == "admin")) or 0
 
     return {
         "users": [
             serialize_admin_user(user)
             for user in users
         ],
+        "total_users": total_users,
+        "active_users": active_users,
+        "admins": admins,
         "page": page,
         "page_size": page_size,
         "filtered_total": filtered_total,
