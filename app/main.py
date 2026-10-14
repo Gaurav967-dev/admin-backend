@@ -221,9 +221,7 @@ def serialize_admin_user(user: User):
     }
 
 def get_user_summary(db: Session):
-    users = db.scalars(
-        select(User).order_by(User.id.desc())    
-    ).all()
+    users = db.scalars(select(User).order_by(User.id.asc())).all()
 
     return {
         "total_users": len(users),
@@ -618,7 +616,7 @@ def get_users(
         conditions.append(User.role == role_filter)
 
     filtered_total = db.scalar(select(func.count()).select_from(User).where(*conditions)) or 0
-    users = db.scalars(select(User).where(*conditions).order_by(User.id.desc()).offset((page - 1) * page_size).limit(page_size)).all()
+    users = db.scalars(select(User).where(*conditions).order_by(User.id.asc()).offset((page - 1) * page_size).limit(page_size)).all()
     total_users = db.scalar(select(func.count()).select_from(User)) or 0
     active_users = db.scalar(select(func.count()).select_from(User).where(User.is_active.is_(True))) or 0
     admins = db.scalar(select(func.count()).select_from(User).where(User.role == "admin")) or 0
