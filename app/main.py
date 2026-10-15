@@ -425,7 +425,7 @@ def signup(
 
     try:
         db.flush()
-        set_auth_cookies(response, db, user)
+        tokens = set_auth_cookies(response, db, user)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -436,7 +436,8 @@ def signup(
 
     return {
         "message": "Account created successfully",
-        "user": public_user(user)
+        "user": public_user(user),
+        "tokens": tokens
     }
 
 
