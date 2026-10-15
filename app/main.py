@@ -464,13 +464,16 @@ def signin(
             detail="Invalid email or password"
         )
 
-    set_auth_cookies(response, db, user)
+    tokens = set_auth_cookies(response, db, user)
     db.commit()
 
-    return {
+    result = {
         "message": "Login successful",
-        "user": public_user(user)
+        "user": public_user(user),
+        "tokens": tokens
     }
+
+    return result
 
 @app.get("/verify-token")
 def verify_token(
@@ -548,10 +551,10 @@ def refresh_token(
     # Rotation: old refresh token cannot be reused.
     session.revoked = True
 
-    set_auth_cookies(response, db, user)
+    tokens = set_auth_cookies(response, db, user)
     db.commit()
 
-    return {"message": "Token refreshed"}
+    return {"message": "Token refreshed", "tokens": tokens}
 
 
 @app.post("/logout")
