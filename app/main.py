@@ -143,6 +143,12 @@ def set_auth_cookies(
             path=cookie_path
         )
 
+    return {
+        "id_token": id_token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
+
 
 def current_user(
     access_token: str | None = Cookie(default=None),
