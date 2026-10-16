@@ -295,15 +295,12 @@ def serialize_profile(
         "team": profile.team if profile else None,
         "manager": profile.manager if profile else None,
         "lead": profile.lead if profile else None,
-        "onboarding_start": (
-            profile.onboarding_start.isoformat()
-            if profile and profile.onboarding_start
-            else None
-        ),
+        "onboarding_start": ( profile.onboarding_start.isoformat() if profile and profile.onboarding_start else None),
         "onboarding_required": ( profile.onboarding_required if profile else True),
         "tasks": tasks,
         "onboarding_progress": progress,
         "onboarding_status": status,
+        "created_at": ( user.created_at.isoformat() if user.created_at else None),
     }
 
 

@@ -1,7 +1,5 @@
 from datetime import datetime, date
-from sqlalchemy import (
-    String, Boolean, DateTime, Date, ForeignKey
-)
+from sqlalchemy import String, Boolean, DateTime, Date, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 from .database import Base
@@ -31,6 +29,12 @@ class User(Base):
 
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True
+    )
+
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=True
     )
 
 class RefreshSession(Base):
