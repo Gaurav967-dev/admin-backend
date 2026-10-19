@@ -64,6 +64,6 @@ class ProfilePut(BaseModel):
             return None
 
         if not re.fullmatch(r"\+?[1-9]\d{6,14}", value):
-            raise ValueError("Phone number must contain 7-15 digits, " "optionally starting with +")
+            raise ValueError("Phone number must contain 7-15 digits, optionally starting with +")
 
         return value
