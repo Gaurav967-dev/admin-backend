@@ -309,36 +309,33 @@ def save_profile(
     user: User,
     data: ProfilePut
 ):
-    # Serialize first-time phone submissions for this user, prevents two simultaneous requests from setting different initial phone numbers.
+    # Lock the user row only when a phone number is submitted.
     if data.phone is not None:
         db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
-    
-        profile = db.get(EmployeeProfile, user.id)
 
-        if profile is None:
-            profile = EmployeeProfile(
-                user_id=user.id,
-                first_name=data.first_name,
-                last_name=data.last_name,
+    # Always load, create the profile.
+    profile = db.get(EmployeeProfile, user.id)
+
+    if profile is None:
+        profile = EmployeeProfile(
+            user_id=user.id,
+            first_name=data.first_name,
+            last_name=data.last_name,
+        )
+        db.add(profile)
+
+    # Phone number can only be entered once.
+    if data.phone is not None:
+        existing_phone = (profile.phone or "").strip()
+
+        if existing_phone and existing_phone != data.phone:
+            raise HTTPException(
+                status_code=409,
+                detail=("Phone number is already set and cannot be changed")
             )
-            db.add(profile)
 
-        # Phone set once, never replaced.
-        if data.phone is not None:
-            existing_phone = (
-                profile.phone.strip()
-                if profile.phone
-                else ""
-            )
-
-            if existing_phone:
-                if data.phone != existing_phone:
-                    raise HTTPException(
-                        status_code=409,
-                        detail=("Phone number is already set and cannot be changed")
-                    )
-            else:
-                profile.phone = data.phone
+        if not existing_phone:
+            profile.phone = data.phone
 
     # Synchronize employee name and email with existing authentication user.
     user.name = " ".join(
