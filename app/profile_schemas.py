@@ -48,19 +48,3 @@ class ProfilePut(BaseModel):
             raise ValueError("Exactly one of each onboarding task is required")
 
         return tasks
-
-class ProfilePatch(BaseModel):
-    # Optional fields for partial updates
-    first_name: str | None = Field( default=None, min_length=2, max_length=80 )
-    last_name: str | None = Field( default=None, max_length=80 )
-    email: EmailStr | None = None
-    phone: str | None = Field( default=None, max_length=20 )
-    position: str | None = Field( default=None, max_length=100 )
-    team: str | None = Field( default=None, max_length=100 )
-    manager: str | None = Field( default=None, max_length=100 )
-    lead: str | None = Field( default=None, max_length=100 )
-
-    onboarding_start: date | None = None
-    onboarding_required: bool | None = None
-
-    tasks: list[TaskInput] | None = None

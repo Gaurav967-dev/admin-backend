@@ -8,7 +8,7 @@ from typing import Literal
 from fastapi import ( FastAPI, Depends, HTTPException, Cookie, Response, Request, status, Query )
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr, Field, field_validator, ValidationError
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select, delete, update, func, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from .database import Base, engine, get_db
 from .models import User, RefreshSession, EmployeeProfile
 from .security import ( hash_password, verify_password, create_token, decode_token, hash_jti )
-from .profile_schemas import ( ProfilePut, ProfilePatch, TASK_LABELS, default_tasks )
+from .profile_schemas import ( ProfilePut, TASK_LABELS, default_tasks )
 
 app = FastAPI(title="Admin Management API")
 
@@ -32,7 +32,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
@@ -823,54 +823,6 @@ def update_profile(
     result = save_profile(db, user, data)
 
     # Regenerate ID token only if identity changes.
-    if user.name != old_name or user.email != old_email:
-        set_identity_cookie(response, user)
-
-    return {
-        "message": "Profile updated successfully",
-        "profile": result
-    }
-
-
-@app.patch("/profile")
-def patch_profile(
-    data: ProfilePatch,
-    response: Response,
-    user: User = Depends(current_user),
-    db: Session = Depends(get_db)
-):
-    # Get logged in user's profile
-    profile = db.get(EmployeeProfile, user.id)
-
-    # Get existing profile data
-    current = serialize_profile(user, profile) 
-
-    # Keep only fields editable through ProfilePut
-    merged = {
-        key: current[key]
-        for key in ProfilePut.model_fields.keys()
-    }
-
-    # Only explicitly supplied patch fields should overwrite existing values.
-    changes = data.model_dump(exclude_unset=True)
-
-    merged.update(changes)
-
-    # Validate resulting full profile
-    try:
-        validated = ProfilePut.model_validate(merged)
-
-    except ValidationError:
-        raise HTTPException(
-            status_code=422,
-            detail="Invalid profile update"
-        )
-
-    old_name = user.name
-    old_email = user.email
-
-    result = save_profile(db, user, validated)
-
     if user.name != old_name or user.email != old_email:
         set_identity_cookie(response, user)
 
