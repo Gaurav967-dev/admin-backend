@@ -326,11 +326,8 @@ def save_profile(
         if part
     )
 
-    user.email = str(data.email).lower()
-
     profile.first_name = data.first_name
     profile.last_name = data.last_name
-    profile.phone = data.phone
     profile.position = data.position
     profile.team = data.team
     profile.manager = data.manager

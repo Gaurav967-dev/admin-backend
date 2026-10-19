@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import ( BaseModel, EmailStr, Field, field_validator )
+from pydantic import ( BaseModel, ConfigDict, Field, field_validator )
 
 # Onboarding task identifiers.
 TaskKey = Literal[ "office_tour", "management_intro", "work_tools", "meet_colleagues", "duties_journal", "requests_handling", "activity_tracking"]
@@ -22,8 +22,6 @@ class ProfilePut(BaseModel):
     # Required fields for full replacement
     first_name: str = Field(min_length=2, max_length=80)
     last_name: str = Field(max_length=80)
-    email: EmailStr
-    phone: str | None = Field(max_length=20)
     position: str | None = Field(max_length=100)
     team: str | None = Field(max_length=100)
     manager: str | None = Field(max_length=100)
@@ -33,6 +31,8 @@ class ProfilePut(BaseModel):
     onboarding_required: bool
 
     tasks: list[TaskInput] = Field( min_length=7, max_length=7 )
+
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("first_name", "last_name")
     @classmethod
