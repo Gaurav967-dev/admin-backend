@@ -817,9 +817,14 @@ def update_profile(
     user: User = Depends(current_user),
     db: Session = Depends(get_db)
 ):
+    old_name = user.name
+    old_email = user.email
+    
     result = save_profile(db, user, data)
 
-    set_identity_cookie(response, user)
+    # Regenerate ID token only if identity changes.
+    if user.name != old_name or user.email != old_email:
+        set_identity_cookie(response, user)
 
     return {
         "message": "Profile updated successfully",
@@ -861,9 +866,13 @@ def patch_profile(
             detail="Invalid profile update"
         )
 
+    old_name = user.name
+    old_email = user.email
+
     result = save_profile(db, user, validated)
 
-    set_identity_cookie(response, user)
+    if user.name != old_name or user.email != old_email:
+        set_identity_cookie(response, user)
 
     return {
         "message": "Profile updated successfully",
