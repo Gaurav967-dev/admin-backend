@@ -309,15 +309,36 @@ def save_profile(
     user: User,
     data: ProfilePut
 ):
-    profile = db.get(EmployeeProfile, user.id)
+    # Serialize first-time phone submissions for this user, prevents two simultaneous requests from setting different initial phone numbers.
+    if data.phone is not None:
+        db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
+    
+        profile = db.get(EmployeeProfile, user.id)
 
-    if profile is None:
-        profile = EmployeeProfile(
-            user_id=user.id,
-            first_name=data.first_name,
-            last_name=data.last_name,
-        )
-        db.add(profile)
+        if profile is None:
+            profile = EmployeeProfile(
+                user_id=user.id,
+                first_name=data.first_name,
+                last_name=data.last_name,
+            )
+            db.add(profile)
+
+        # Phone set once, never replaced.
+        if data.phone is not None:
+            existing_phone = (
+                profile.phone.strip()
+                if profile.phone
+                else ""
+            )
+
+            if existing_phone:
+                if data.phone != existing_phone:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=("Phone number is already set and cannot be changed")
+                    )
+            else:
+                profile.phone = data.phone
 
     # Synchronize employee name and email with existing authentication user.
     user.name = " ".join(

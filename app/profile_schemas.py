@@ -2,6 +2,7 @@ from datetime import date
 from typing import Literal
 
 from pydantic import ( BaseModel, ConfigDict, Field, field_validator )
+import re
 
 # Onboarding task identifiers.
 TaskKey = Literal[ "office_tour", "management_intro", "work_tools", "meet_colleagues", "duties_journal", "requests_handling", "activity_tracking"]
@@ -48,3 +49,21 @@ class ProfilePut(BaseModel):
             raise ValueError("Exactly one of each onboarding task is required")
 
         return tasks
+
+    phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value:str | None):
+        if value is None:
+            return None
+
+        value = value.strip()
+
+        if not value:
+            return None
+
+        if not re.fullmatch(r"\+?[1-9]\d{6,14}", value):
+            raise ValueError("Phone number must contain 7-15 digits, " "optionally starting with +")
+
+        return value
