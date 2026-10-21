@@ -50,4 +50,3 @@ DELETE /user,
 
 GET /profile,
 PUT /profile,
-PATCH /profile,
