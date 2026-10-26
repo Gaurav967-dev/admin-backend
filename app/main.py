@@ -522,15 +522,27 @@ def refresh_token(
     refresh_token: str | None = Cookie(default=None),
     db: Session = Depends(get_db)
 ):
+    # The browser no longer has a refresh cookie.
     if not refresh_token:
         raise HTTPException(
-            status_code=401,
-            detail="Refresh token missing"
+            status_code=419,
+            detail="Session expired. Please sign in again."
         )
 
+    # Expired refresh JWT -> 419, Invalid/tampered JWT -> 401.
     payload = decode_token(
-        refresh_token, "refresh"
+        refresh_token,
+        "refresh",
+        expired_status=419
     )
+
+    try:
+        user_id = int(payload["sub"])
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid refresh token subject"
+        ) from exc
 
     # Lock the session to prevent concurrent reuse.
     session = db.scalar(
@@ -542,15 +554,22 @@ def refresh_token(
         .with_for_update()
     )
 
+    # Session expired, revoked, or no longer exists.
     if (
-        not session
+        session is None
         or session.revoked
-        or session.user_id != int(payload["sub"])
         or session.expires_at <= datetime.now(timezone.utc)
     ):
         raise HTTPException(
-            status_code=401,
+            status_code=419,
             detail="Refresh session expired or revoked"
+        )
+
+    # A valid token must belong to this session's user.
+    if session.user_id != user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid refresh token session"
         )
 
     user = db.get(User, session.user_id)
@@ -561,13 +580,21 @@ def refresh_token(
             detail="User unavailable"
         )
 
-    # Rotation: old refresh token cannot be reused.
+    # Preserve your existing refresh-token rotation.
     session.revoked = True
 
-    tokens = set_auth_cookies(response, db, user)
+    tokens = set_auth_cookies(
+        response,
+        db,
+        user
+    )
+
     db.commit()
 
-    return {"message": "Token refreshed", "tokens": tokens}
+    return {
+        "message": "Token refreshed",
+        "tokens": tokens
+    }
 
 
 @app.post("/logout")

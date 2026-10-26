@@ -4,7 +4,7 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from jwt import InvalidTokenError
+from jwt import ExpiredSignatureError, InvalidTokenError
 from pwdlib import PasswordHash
 
 from fastapi import HTTPException
@@ -82,7 +82,11 @@ def create_token(user_id: int, token_type: str, identity: dict | None = None, se
 
     return token, jti, expires_at
 
-def decode_token(token: str, expected_type: str):
+def decode_token(
+    token: str,
+    expected_type: str,
+    expired_status: int = 401
+):
     try:
         payload = jwt.decode(
             token,
@@ -100,8 +104,14 @@ def decode_token(token: str, expected_type: str):
 
         return payload
 
-    except InvalidTokenError:
+    except ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=expired_status,
+            detail="Token expired"
+        ) from exc
+
+    except InvalidTokenError as exc:
         raise HTTPException(
             status_code=401,
-            detail="Invalid or expired token"
-        )
+            detail="Invalid token"
+        ) from exc
