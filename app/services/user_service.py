@@ -173,8 +173,7 @@ def update_user_record(
             detail="User not found"
         )
 
-    # Prevent administrators from removing
-    # their own administrative access.
+    # Prevent administrators from removing their own administrative access.
     if user.id == admin.id:
         if data.role != "admin":
             raise HTTPException(
@@ -267,3 +266,15 @@ def delete_user_record(
     return {
         "message": "User deleted successfully"
     }
+
+
+def get_user_detail(db: Session, user_id: int):
+    user = db.get(User, user_id)
+
+    if user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    return serialize_admin_user(user)

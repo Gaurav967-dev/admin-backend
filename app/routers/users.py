@@ -1,13 +1,13 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies.auth import require_admin
 from ..models import User
 from ..schemas.user import ( CreateUserRequest, UpdateUserRequest )
-from ..services.user_service import ( get_user_summary, list_users, create_user_record, update_user_record, delete_user_record )
+from ..services.user_service import ( get_user_summary, list_users, get_user_detail, create_user_record, update_user_record, delete_user_record )
 
 router = APIRouter(tags=["User Management"])
 
@@ -78,3 +78,18 @@ def delete_user(
         user_id,
         admin
     )
+
+
+@router.get("user/{user_id}")
+def view_user(
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if user_id <= 0:
+        raise HTTPException(
+            status_code=422,
+            detail="User ID must be positive"
+        )
+
+    return get_user_detail(db, user_id)
