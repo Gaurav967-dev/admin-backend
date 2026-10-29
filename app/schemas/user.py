@@ -27,10 +27,19 @@ class UserFields(BaseModel):
 
 
 class CreateUserRequest(UserFields):
+    is_active: bool
+
     password: str = Field(
         min_length=12,
         max_length=128
     )
+
+    @field_validator("is_active")
+    @classmethod
+    def require_active_account(cls, value: bool):
+        if value is not True:
+            raise ValueError("Active Account must be checked to create a user")
+        return value
 
     @field_validator("password")
     @classmethod
