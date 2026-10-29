@@ -80,7 +80,7 @@ def delete_user(
     )
 
 
-@router.get("user/{user_id}")
+@router.get("/user/{user_id}")
 def view_user(
     user_id: int,
     admin: User = Depends(require_admin),
